@@ -3,7 +3,8 @@ package twofer
 
 import "fmt"
 
-// Return the string "One for <name>[default: you], one for me"
+// ShareWith returns the string "One for <name>, one for me."
+// The default for <name> is 'you'.
 func ShareWith(name string) string {
 	if name == "" {
 		name = "you"
