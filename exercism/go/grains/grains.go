@@ -3,25 +3,21 @@
 // double the number of grains on each subsequent square of the board.
 package grains
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Square returns the number of grains of wheat that would be on this square.
 func Square(square int) (uint64, error) {
 	if square < 1 || square > 64 {
 		return 0, fmt.Errorf("square out of range")
 	}
-	if square == 1 {
-		return 1, nil
-	}
-	return 2 << uint(square-2), nil
+	return 1 << uint(square-1), nil
 }
+
+const sumOf2to64 = 1<<64 - 1
 
 // Total implements a sum of all the quantities on the chessboard positions.
 func Total() uint64 {
-	var sum uint64
-	for i := 1; i <= 64; i++ {
-		res, _ := Square(i)
-		sum += res
-	}
-	return sum
+	return sumOf2to64
 }
