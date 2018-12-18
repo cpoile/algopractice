@@ -2,6 +2,7 @@
 package robotname
 
 import (
+	"log"
 	"math/rand"
 	"strconv"
 	"time"
@@ -26,8 +27,14 @@ func (r *Robot) Reset() { r.name = "" }
 // keep track of names so we don't use the same name twice
 var usedNames = map[string]bool{}
 
+// max number of unique names
+const maxNames = 26 * 26 * 10 * 10 * 10
+
 // generate a new random name, and try again if we already have it.
 func randName() string {
+	if len(usedNames) == maxNames {
+		log.Fatalf("we have used all the combinations of robot names")
+	}
 	name := genNewName()
 	for usedNames[name] {
 		name = genNewName()
