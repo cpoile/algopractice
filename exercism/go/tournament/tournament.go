@@ -12,16 +12,16 @@ import (
 )
 
 type team struct {
-	name           string
-	mp, w, d, l, p int
+	name                                    string
+	matchesPlayed, won, drawn, lost, points int
 }
 
 // Tally reads game results and writes a formatted team ranking
 func Tally(reader io.Reader, writer io.Writer) error {
-	// our slice of team structs
-	var teams []team
-	// a name->idx map
-	tIdx := map[string]int{}
+	// our slice of team structs, so we can sort them
+	var teams []*team
+	// a map to look up team by name
+	nameToTeam := map[string]*team{}
 
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
@@ -34,52 +34,49 @@ func Tally(reader io.Reader, writer io.Writer) error {
 			return errors.New("input not well formatted")
 		}
 
-		for i := 0; i < 2; i++ {
-			// find the team struct or make a new one
-			idx, ok := tIdx[tokens[i]]
-			if !ok {
-				idx = len(teams)
-				tIdx[tokens[i]] = idx
-				teams = append(teams, team{name: tokens[i]})
-			}
-			team := teams[idx]
-
-			// record the game result
-			switch tokens[2] {
-			case "draw":
-				team.d++
-			case "win":
-				if i == 0 {
-					team.w++
-				} else {
-					team.l++
-				}
-			case "loss":
-				if i == 0 {
-					team.l++
-				} else {
-					team.w++
-				}
-			default:
-				return errors.New("result column not well formatted")
-			}
-			team.mp++
-			team.p = team.w*3 + team.d
-			teams[idx] = team
+		team1, team2 := nameToTeam[tokens[0]], nameToTeam[tokens[1]]
+		if team1 == nil {
+			team1 = &team{name: tokens[0]}
+			teams = append(teams, team1)
+			nameToTeam[tokens[0]] = team1
 		}
+		if team2 == nil {
+			team2 = &team{name: tokens[1]}
+			teams = append(teams, team2)
+			nameToTeam[tokens[1]] = team2
+		}
+
+		// record the game result
+		switch tokens[2] {
+		case "draw":
+			team1.drawn++
+			team2.drawn++
+		case "win":
+			team1.won++
+			team2.lost++
+		case "loss":
+			team1.lost++
+			team2.won++
+		default:
+			return errors.New("result column not well formatted")
+		}
+		team1.matchesPlayed++
+		team2.matchesPlayed++
+		team1.points = team1.won*3 + team1.drawn
+		team2.points = team2.won*3 + team2.drawn
 	}
 
 	// format the output
 	sort.Slice(teams, func(i, j int) bool {
-		if teams[i].p == teams[j].p {
+		if teams[i].points == teams[j].points {
 			return teams[i].name < teams[j].name
 		}
-		return teams[i].p > teams[j].p
+		return teams[i].points > teams[j].points
 	})
 	fmt.Fprintf(writer, "%-31s| MP |  W |  D |  L |  P\n", "Team")
 	for _, t := range teams {
 		fmt.Fprintf(writer, "%-31s| %2d | %2d | %2d | %2d | %2d\n",
-			t.name, t.mp, t.w, t.d, t.l, t.p)
+			t.name, t.matchesPlayed, t.won, t.drawn, t.lost, t.points)
 	}
 	return nil
 }
