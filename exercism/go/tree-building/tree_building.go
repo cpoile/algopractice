@@ -41,7 +41,7 @@ func Build(records []Record) (*Node, error) {
 	}
 
 	// start the tree with the root node
-	root := &Node{}
+	root := new(Node)
 	nodes := []*Node{root}
 
 	// check for duplicates (including duplicate root), check that we have continuous IDs,
@@ -51,7 +51,7 @@ func Build(records []Record) (*Node, error) {
 	// after the checks, build the tree
 	for i := 1; i < len(records); i++ {
 		if records[i-1].ID == records[i].ID {
-			return nil, fmt.Errorf("Node is a duplicate - {ID: %d, Parent: %d}", records[i].ID, records[i].Parent)
+			return nil, fmt.Errorf("node is a duplicate - {ID: %d, Parent: %d}", records[i].ID, records[i].Parent)
 		}
 		if records[i-1].ID != records[i].ID-1 {
 			return nil, errors.New("non-continuous")
