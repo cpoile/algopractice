@@ -9,8 +9,18 @@ func Bst(data int) *SearchTreeData {
 	return &SearchTreeData{nil, nil, data}
 }
 
-func (bst *SearchTreeData) Insert(data int) {
+func (bst *SearchTreeData) Insert(data int) *SearchTreeData {
+	if bst == nil {
+		return Bst(data)
+	}
 	if data <= bst.data {
+		bst.left = bst.left.Insert(data)
+	} else {
+		bst.right = bst.right.Insert(data)
+	}
+	return bst
+
+	/*if data <= bst.data {
 		if bst.left == nil {
 			bst.left = Bst(data)
 		} else {
@@ -22,7 +32,7 @@ func (bst *SearchTreeData) Insert(data int) {
 		} else {
 			bst.right.Insert(data)
 		}
-	}
+	}*/
 }
 
 func (bst *SearchTreeData) MapString(f func(int) string) []string {
