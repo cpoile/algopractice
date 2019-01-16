@@ -2,7 +2,7 @@ package rectangles
 
 var count int
 
-// Count finds each top left corner, then searched for: top right, bottom left,
+// Count finds each top left corner, then searches for: top right, bottom left,
 // bottom right, top left, and checks if top left is the same as where we started
 func Count(bs []string) int {
 	count = 0
