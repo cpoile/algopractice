@@ -35,11 +35,9 @@ func LISFirst(ints []int) int {
 
 func LISFirstTable(arr []int) int {
 	tab := make([]int, len(arr))
-	for i := 0; i < len(arr); i++ {
-		tab[i] = 1
-	}
 
-	for i := len(arr) - 2; i >= 0; i-- {
+	for i := len(arr) - 1; i >= 0; i-- {
+		tab[i] = 1
 		for j := i + 1; j < len(arr); j++ {
 			if arr[i] < arr[j] && 1+tab[j] > tab[i] {
 				tab[i] = 1 + tab[j]
