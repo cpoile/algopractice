@@ -44,3 +44,8 @@ func breadthFirst(f func(string) []string, worklist []string) {
 		}
 	}
 }
+
+type ListNode struct {
+	Val  int
+	Next *ListNode
+}
