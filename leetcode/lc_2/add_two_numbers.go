@@ -1,4 +1,4 @@
-package Two
+package lc_2
 
 type ListNode struct {
 	Val  int

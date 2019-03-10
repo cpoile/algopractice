@@ -1,4 +1,4 @@
-package Three
+package lc_3
 
 func lengthOfLongestSubstring1(s string) int {
 	var seen [127]bool

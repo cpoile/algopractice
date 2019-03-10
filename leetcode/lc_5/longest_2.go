@@ -1,4 +1,4 @@
-package Five
+package lc_5
 
 func longestPalindrome(s string) string {
 	var ans string

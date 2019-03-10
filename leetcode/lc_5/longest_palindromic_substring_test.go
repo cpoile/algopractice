@@ -1,4 +1,4 @@
-package Five
+package lc_5
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-package Four
+package lc_4
 
 import "testing"
 

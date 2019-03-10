@@ -1,4 +1,4 @@
-package Three
+package lc_3
 
 func lengthOfLongestSubstring(s string) int {
 	var maxLen int

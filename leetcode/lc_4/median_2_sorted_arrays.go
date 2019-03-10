@@ -1,4 +1,4 @@
-package Four
+package lc_4
 
 func findMedianSortedArrays(nums1 []int, nums2 []int) float64 {
 	var mid1, mid2 int

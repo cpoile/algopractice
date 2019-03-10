@@ -1,4 +1,4 @@
-package Three
+package lc_3
 
 import "testing"
 
