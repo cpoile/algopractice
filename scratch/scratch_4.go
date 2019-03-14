@@ -1,7 +1,8 @@
-package scratch
+package main
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"reflect"
 )
 
@@ -17,7 +18,7 @@ func main() {
 	fmt.Println("Type:", v.Type())
 	fmt.Println("Kind:", v.Kind())
 	fmt.Println("Type == TypeOf", v.Type() == reflect.TypeOf(x))
-	fmt.Println(v.Float(), "\n")
+	fmt.Println(v.Float())
 
 	type myInt int
 	var y myInt = 42
@@ -29,7 +30,7 @@ func main() {
 	fmt.Println(yv.Interface())
 	fmt.Println(reflect.TypeOf(v))
 	fmt.Println(reflect.TypeOf(v.Interface()))
-	fmt.Printf("value of x is %7.1e\n", v)
+	fmt.Printf("value of x is %v\n", v)
 	fmt.Printf("value of x is %7.1e\n", v.Interface())
 
 	//v.SetFloat(7.1) // panic
@@ -76,7 +77,7 @@ func main() {
 	ve.Field(2).SetFloat(6 + 4.0/12)
 	fmt.Printf("%s is now: %v\n\n", vt, m)
 
-	mp := myStructOfPtr{NewString("Chris2"), NewInt(25), NewFloat(5 + 3/12.0),
+	mp := myStructOfPtr{NewString("Chris2"), 25, NewFloat(5 + 3/12.0),
 		nestedStruct{NewInt(180), []int{175, 170, 160}, NewFloat(47.5),
 			&wifeStruct{NewInt(105), map[string]int{"before": 100, "way Before": 105, "much before": 110},
 				NewFloat(10.3)}}, nil}
@@ -129,22 +130,22 @@ func main() {
 		"freeValue":    false,
 		"anotherValue": 123.91,
 	}
-	fmt.Println("\nmap:", pathMap)
+	fmt.Println("\n***map:\n", pathMap)
 
-	fmt.Printf("in path form: %q", getPaths(pathMap))
+	fmt.Printf("***in path form: %q\n", getPaths(pathMap))
 
 	vep := reflect.ValueOf(&mp).Elem()
 	vep.Field(0).Elem().SetString("Christoph")
-	vep.FieldByName("Age").Elem().SetInt(32)
+	vep.FieldByName("Age").SetInt(32)
 	vep.Field(2).Elem().SetFloat(6 + 5.0/12)
 	vep.Field(3).Field(0).Elem().SetInt(185)
 	vep.Field(3).FieldByName("Weight").Elem().SetInt(190)
 	fmt.Printf("%s is now: %v", vtp, mp)
 
-	fmt.Println("\n")
-	s := &myStructOfPtr{NewString("Bob"), NewInt(28), NewFloat(4 + 3/12.0),
-		nestedStruct{NewInt(180), []int{175, 170, 160}, NewFloat(47.5),
-			&wifeStruct{NewInt(105), map[string]int{"before": 100, "way Before": 105, "much before": 110},
+	fmt.Printf("\n\n")
+	s := &myStructOfPtr{NewString("Bob"), 28, NewFloat(4 + 3/12.0),
+		nestedStruct{NewInt(180), []int{175, 170, 160, 58}, NewFloat(47.5),
+			&wifeStruct{NewInt(105), map[string]int{"before": 999, "way Before": 105, "much before": 110, "now!": 100},
 				NewFloat(10.3)}}, []string{"nice", "dad"}}
 	fmt.Printf("Name: %s, Age: %v, Height: %v, Weight: %v, Stats: %q\n",
 		getVal(s, []string{"Name"}),
@@ -154,9 +155,9 @@ func main() {
 		getVal(s, []string{"Stats"}))
 
 	setVal(s, []string{"Name"}, "Bob2")
-	setVal(s, []string{"Age"}, 32)
+	setVal(s, []string{"Age"}, 99)
 	setVal(s, []string{"Height"}, 6.2)
-	setVal(*s, []string{"MyWeight", "Weight"}, 160)
+	setVal(s, []string{"MyWeight", "Weight"}, 160)
 	setVal(s, []string{"Stats"}, []string{"really", "nice", "dad"})
 
 	fmt.Printf("Name: %s, Age: %v, Height: %v, Weight: %v, Stats: %q\n\n",
@@ -166,92 +167,130 @@ func main() {
 		getVal(s, []string{"MyWeight", "Weight"}),
 		getVal(s, []string{"Stats"}))
 
-	s2 := &myStructOfPtr{NewString("Bob3"), NewInt(32), NewFloat(4 + 3/12.0),
-		nestedStruct{NewInt(180), []int{175, 170, 160}, NewFloat(47.5),
-			&wifeStruct{NewInt(105), map[string]int{"before": 100, "way Before": 105, "much before": 110},
-				NewFloat(10.3)}}, []string{"nice", "dad"}}
+	s2 := &myStructOfPtr{nil, 32, NewFloat(4 + 3/12.0),
+		nestedStruct{NewInt(180), []int{77, 170, 999}, NewFloat(47.5),
+			&wifeStruct{nil, map[string]int{"before": 100, "way Before": 105, "much before": 66},
+				NewFloat(10.4)}}, []string{"nice", "dad"}}
 
-	s3, ok := merge(s2, s)
-	fmt.Printf("\nMerged? %t, %v\n", ok, s3)
+	fmt.Println(s)
+	fmt.Println(s2)
+
+	s3, err := merge(s, s2)
+	fmt.Printf("\nok? %t\nBase: %v\nPatch: %v\nMerge: %v\n", err == nil, s, s2, s3)
 }
 
-func merge(base interface{}, patch interface{}) (interface{}, bool) {
-	if reflect.TypeOf(base) != reflect.TypeOf(patch) {
-		return nil, false
+func mergeTestStructs(base, patch testStruct) (*testStruct, error) {
+	ret, err := merge(base, patch)
+	if err != nil {
+		return nil, err
 	}
+	retTS := ret.(testStruct)
+	return &retTS, nil
+}
+
+func mergeTestStructsPtrs(base, patch *testStruct) (*testStruct, error) {
+	ret, err := merge(base, patch)
+	if err != nil {
+		return nil, err
+	}
+	retTS := ret.(testStruct)
+	return &retTS, nil
+}
+
+// Will not add new fields to base.
+// Will replace entire maps and slices (at the moment).
+func merge(base interface{}, patch interface{}) (interface{}, error) {
+	if reflect.TypeOf(base) != reflect.TypeOf(patch) {
+		return nil, fmt.Errorf("cannot merge different types. base type: %s, patch type: %s",
+			reflect.TypeOf(base), reflect.TypeOf(patch))
+	}
+
 	baseType := reflect.TypeOf(base)
 	if baseType.Kind() == reflect.Ptr {
 		baseType = baseType.Elem()
 	}
+
 	ret := reflect.New(baseType)
-	initStruct(baseType, ret.Elem())
-	fmt.Printf("ret: %T, %v\n", ret.Elem(), ret.Elem())
-
-	//fmt.Printf("ret.Elem(): %T, .Interface() %T\n", ret.Elem(), ret.Elem().Interface())
-	//fmt.Printf("raw myStructOfPtr: %T\n", reflect.TypeOf(myStructOfPtr{}))
-	//fmt.Printf("equal? %t, %T, %T", baseType == reflect.TypeOf(myStructOfPtr{}),
-	//	baseType, reflect.TypeOf(myStructOfPtr{}))
-
-	ok := mergeRec(base, patch, ret.Elem())
-	if !ok {
-		return nil, false
+	if err := initStruct(baseType, ret.Elem()); err != nil {
+		return nil, err
 	}
-	fmt.Printf("\nReturned: %T, %v", ret, ret)
-	return ret, true
+
+	if err := mergeRec(base, patch, ret.Elem()); err != nil {
+		return nil, err
+	}
+	return ret.Elem().Interface(), nil
 }
 
-func mergeRec(base interface{}, patch interface{}, ret reflect.Value) bool {
+func mergeRec(base interface{}, patch interface{}, ret reflect.Value) (err error) {
+	//defer func() {
+	//	if x := recover(); x != nil {
+	//		err = fmt.Errorf("panic in mergerec. btype: %v, ptype: %v",
+	//			reflect.TypeOf(base), reflect.TypeOf(patch))
+	//	}
+	//}()
+
 	bt := reflect.TypeOf(base)
-	pt := reflect.TypeOf(patch)
 	bv := reflect.ValueOf(base)
 	pv := reflect.ValueOf(patch)
 	if bt.Kind() == reflect.Ptr { // or slice, map
 		bt = bt.Elem()
-		pt = pt.Elem()
 		bv = bv.Elem()
+		// if the patch value is nil, just assign the base value and we're done.
+		if pv.IsNil() {
+			ret.Set(bv)
+			return nil
+		}
 		pv = pv.Elem()
-	} else {
-		// the interfaces were not passed as pointers; we have to make them settable
-		bv = reflect.ValueOf(&base).Elem()
-		pv = reflect.ValueOf(&patch).Elem()
 	}
-	// always want ret to be settable
-	rv := reflect.ValueOf(&ret).Elem()
-	fmt.Printf("is rv settable? %t\n", rv.CanSet())
-
 	for i := 0; i < bt.NumField(); i++ {
+		patchWasNil := false
 		bti := bt.Field(i).Type
-		pti := pt.Field(i).Type
-		if bti.Kind() == reflect.Ptr { // or slice, map
+		bvi := bv.Field(i)
+		pvi := pv.Field(i)
+		rvi := ret.Field(i)
+		switch bti.Kind() {
+		case reflect.Ptr:
+			patchWasNil = pvi.IsNil()
 			bti = bti.Elem()
-			pti = pti.Elem()
+			bvi = bvi.Elem()
+			pvi = pvi.Elem()
+			rvi = rvi.Elem()
+		case reflect.Slice:
+			patchWasNil = pvi.IsNil()
+		case reflect.Map:
+			patchWasNil = pvi.IsNil()
 		}
-		rvi := rv.Field(i).Elem()
-		fmt.Printf("Field %d: %v, type: %s, is struct? %t, is settable? %t, index: %v\n", i, bt.Field(i).Name, bt.Field(i).Type,
-			bti.Kind() == reflect.Struct, bv.CanSet(), bt.Field(i).Index)
-		fmt.Printf("Return field: type: %s, is struct? %t, is settable? %t\n",
-			rvi.Type(), rvi.Kind() == reflect.Struct, rvi.CanSet())
 
-		if bt.Field(i).Type.Kind() == reflect.Struct {
-			newi, ok := mergeRec(bv.Field(i).Interface(), pv.Field(i).Interface())
-			if !ok {
-				return newi, false
+		if bti.Kind() == reflect.Struct {
+			err := mergeRec(bv.Field(i).Interface(), pv.Field(i).Interface(), rvi)
+			if err != nil {
+				return fmt.Errorf("failed in mergeRec on field # %d of type %v, err: %v", i, bti, err)
 			}
-			rvi.Set(newi)
 		} else {
-			// for now, just use base:
-			//rvi.Set(bv.Field(i))
-			rv.Field(i).SetString("test") // rvi is "value obtained using unexported field"
-
+			if !patchWasNil && bvi != pvi {
+				rvi.Set(pvi)
+			} else {
+				rvi.Set(bvi)
+			}
 		}
 	}
-	return rv, true
+	return nil
 }
 
-func initStruct(t reflect.Type, v reflect.Value) {
+func initStruct(t reflect.Type, v reflect.Value) (err error) {
+	defer func() {
+		if x := recover(); x != nil {
+			err = fmt.Errorf("panic in initStruct. type: %v, kind: %v, is value settable? %t. "+
+				"if not settable, check if are you trying to merge a struct with an unexported field",
+				t, v.Kind(), v.CanSet())
+		}
+	}()
+
+	// WIP: if we want to support structs with unexported fields, we need to do that explicitly.
 	for i := 0; i < v.NumField(); i++ {
 		ft := t.Field(i).Type
 		fv := v.Field(i)
+
 		switch ft.Kind() {
 		case reflect.Slice:
 			fv.Set(reflect.MakeSlice(ft, 0, 0))
@@ -260,33 +299,254 @@ func initStruct(t reflect.Type, v reflect.Value) {
 		case reflect.Chan:
 			fv.Set(reflect.MakeChan(ft, 0))
 		case reflect.Struct:
-			initStruct(ft, fv)
+			if e := initStruct(ft, fv); e != nil {
+				return e
+			}
 		case reflect.Ptr:
-			fmt.Printf("ptr is: %v\n", ft.Elem())
 			p := reflect.New(ft.Elem())
 			if ft.Elem().Kind() == reflect.Struct {
-				initStruct(ft.Elem(), p.Elem())
+				if e := initStruct(ft.Elem(), p.Elem()); e != nil {
+					return e
+				}
 			}
 			fv.Set(p)
 		default:
 		}
 	}
+	return nil
+}
+
+func MergeOrig(base interface{}, patch interface{}) (interface{}, error) {
+	if reflect.TypeOf(base) != reflect.TypeOf(patch) {
+		return nil, fmt.Errorf("cannot merge different types. base type: %s, patch type: %s",
+			reflect.TypeOf(base), reflect.TypeOf(patch))
+	}
+
+	baseType := reflect.TypeOf(base)
+	if baseType.Kind() == reflect.Ptr {
+		baseType = baseType.Elem()
+	}
+
+	ret := reflect.New(baseType)
+	if err := initStruct(baseType, ret.Elem()); err != nil {
+		return nil, err
+	}
+
+	if err := mergeRecOrig(base, patch, ret.Elem()); err != nil {
+		return nil, err
+	}
+	return ret.Elem().Interface(), nil
+}
+
+// mergeRec recursively merges into ret
+func mergeRecOrig(base interface{}, patch interface{}, merged reflect.Value) (err error) {
+	bt := reflect.TypeOf(base)
+	bv := reflect.ValueOf(base)
+	pv := reflect.ValueOf(patch)
+	if bt.Kind() == reflect.Ptr {
+		// TODO: find out how to assign nil (not just a zero value)
+		if bv.IsNil() && pv.IsNil() {
+			// if base and patch are nil, leave it
+			return nil
+		} else if pv.IsNil() {
+			// if the patch value is nil, assign base value and done
+			merged.Set(bv.Elem())
+			return nil
+		} else if bv.IsNil() {
+			// if the base value is nil, assign patch value and done
+			merged.Set(pv.Elem())
+			return nil
+		}
+		bt = bt.Elem()
+		bv = bv.Elem()
+		pv = pv.Elem()
+	}
+	for i := 0; i < bt.NumField(); i++ {
+		patchWasNil := false
+		bti := bt.Field(i).Type
+		bvi := bv.Field(i)
+		pvi := pv.Field(i)
+		mvi := merged.Field(i)
+		switch bti.Kind() {
+		case reflect.Ptr:
+			patchWasNil = pvi.IsNil()
+			bti = bti.Elem()
+			bvi = bvi.Elem()
+			pvi = pvi.Elem()
+			mvi = mvi.Elem()
+		case reflect.Slice:
+			patchWasNil = pvi.IsNil()
+		case reflect.Map:
+			patchWasNil = pvi.IsNil()
+		}
+
+		if !mvi.CanSet() {
+			continue
+		}
+
+		if bti.Kind() == reflect.Struct {
+			err := mergeRecOrig(bv.Field(i).Interface(), pv.Field(i).Interface(), mvi)
+			if err != nil {
+				return fmt.Errorf("failed in mergeRec on field # %d of type %v, err: %v", i, bti, err)
+			}
+		} else {
+			if !patchWasNil && bvi != pvi {
+				mvi.Set(pvi)
+			} else {
+				mvi.Set(bvi)
+			}
+		}
+	}
+	return nil
+}
+
+// mergeRec recursively merges into ret
+func mergeRec2(base interface{}, patch interface{}, merged interface{}) (err error) {
+	bt := reflect.TypeOf(base)
+	mt := reflect.TypeOf(merged)
+	bv := reflect.ValueOf(base)
+	mv := reflect.ValueOf(merged)
+	pv := reflect.ValueOf(patch)
+
+	if bt != mt {
+		fmt.Printf("****bt %v != mt %v\n", bt, mt)
+	}
+	// handle pointers
+	if bt.Kind() == reflect.Ptr {
+		bvNil := bv.IsNil()
+		pvNil := pv.IsNil()
+		bt = bt.Elem()
+		mt = mt.Elem()
+		bv = bv.Elem()
+		mv = mv.Elem()
+		pv = pv.Elem()
+		// if the base or patch value is nil, overwrite and we're done.
+		if bvNil && pvNil {
+			mv.Set(reflect.Zero(reflect.ValueOf(merged).Type().Elem()))
+			return nil
+		} else if bvNil && mv.CanSet() {
+			mv.Set(pv)
+			return nil
+		} else if pvNil && mv.CanSet() {
+			mv.Set(bv)
+			return nil
+		}
+	}
+
+	// ignore unexported fields
+	//if !mv.CanSet() {
+	//	return
+	//}
+
+	patchWasNil := false
+	fmt.Printf("**** bvkind %v, mvkind %v\n", bv.Kind(), mv.Kind())
+	switch bt.Kind() {
+	case reflect.Struct:
+		fmt.Printf("*** bt numfield %v, mt numbfield %v\n", bt.NumField(), mt.NumField())
+		for i := 0; i < bt.NumField(); i++ {
+			if !mv.Field(i).CanSet() {
+				continue
+			}
+			err := mergeRec2(bv.Field(i).Interface(), pv.Field(i).Interface(), mv.Field(i).Interface())
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("failed in mergeRec on field # %d of type %v, err: %v", i, bt.Field(i).Type, err))
+			}
+		}
+	default:
+		if mv.Kind() == reflect.Ptr {
+			mv = mv.Elem()
+		}
+		if !patchWasNil && bv != pv {
+			mv.Set(pv)
+		} else {
+			mv.Set(bv)
+		}
+	}
+
+	return nil
+}
+
+// initStruct creates a new struct of type t
+func initStructOrig(tnotused reflect.Type, v reflect.Value) error {
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		ft := t.Field(i).Type
+		fv := v.Field(i)
+
+		// ignore unexported fields
+		if !fv.CanSet() {
+			continue
+		}
+
+		switch ft.Kind() {
+		case reflect.Slice:
+			fv.Set(reflect.MakeSlice(ft, 0, 0))
+		case reflect.Map:
+			fv.Set(reflect.MakeMap(ft))
+		case reflect.Chan:
+			fv.Set(reflect.MakeChan(ft, 0))
+		case reflect.Struct:
+			if err := initStruct(ft, fv); err != nil {
+				return err
+			}
+		case reflect.Ptr:
+			p := reflect.New(ft.Elem())
+			if ft.Elem().Kind() == reflect.Struct {
+				if err := initStruct(ft.Elem(), p.Elem()); err != nil {
+					return err
+				}
+			}
+			fv.Set(p)
+		default:
+		}
+	}
+	return nil
 }
 
 func getPaths(m map[string]interface{}) [][]string {
-	return getPathsRec(m, nil, nil)
+	return getPathsRec(m, nil)
 }
 
-func getPathsRec(src interface{}, curPath []string, allPaths [][]string) [][]string {
+//func getPathsRec(src interface{}) [][]string {
+//	var allPaths [][]string
+//	if reflect.ValueOf(src).Kind() == reflect.Map {
+//		for k, v := range src.(map[string]interface{}) {
+//			for _, path := range getPathsRec(v) {
+//				allPaths = append(allPaths, append([]string{k}, path...))
+//			}
+//		}
+//	} else {
+//		allPaths = append(allPaths, []string{})
+//	}
+//	return allPaths
+//}
+
+func getPathsRec(src interface{}, curPath []string) [][]string {
 	if reflect.ValueOf(src).Kind() == reflect.Map {
+		paths := [][]string{}
 		for k, v := range src.(map[string]interface{}) {
-			allPaths = getPathsRec(v, append(curPath, k), allPaths)
+			paths = append(paths, getPathsRec(v, append(curPath, k))...)
 		}
-	} else {
-		allPaths = append(allPaths, curPath)
+		return paths
 	}
-	return allPaths
+
+	return [][]string{curPath}
 }
+
+//func getPaths(m map[string]interface{}) [][]string {
+//	return getPathsRec(m, nil)
+//}
+
+//func getPathsRec(src interface{}, curPath []string, allPaths [][]string) [][]string {
+//	if reflect.ValueOf(src).Kind() == reflect.Map {
+//		for k, v := range src.(map[string]interface{}) {
+//			allPaths = getPathsRec(v, append(curPath, k), allPaths)
+//		}
+//	} else {
+//		allPaths = append(allPaths, curPath)
+//	}
+//	return allPaths
+//}
 
 func getVal(src interface{}, path []string) reflect.Value {
 	var val reflect.Value
@@ -346,8 +606,21 @@ type wifeStruct struct {
 }
 
 func (ns wifeStruct) String() string {
-	return fmt.Sprintf("{weight: %d, OverTime: %v, ChangeFromHighest: %v}",
-		*ns.Weight, ns.OverTime, *ns.ChangeFromHighest)
+	var w int
+	var cfh float64
+	if ns.Weight == nil {
+		w = 0
+	} else {
+		w = *ns.Weight
+	}
+	if ns.ChangeFromHighest == nil {
+		cfh = 0
+	} else {
+		cfh = *ns.ChangeFromHighest
+	}
+
+	return fmt.Sprintf("{weight: %d, OverTime: %v, ChangeFromHighest: %3.2f}",
+		w, ns.OverTime, cfh)
 }
 
 type nestedStruct struct {
@@ -358,20 +631,45 @@ type nestedStruct struct {
 }
 
 func (ns nestedStruct) String() string {
+	var w int
+	var cfh float64
+	if ns.Weight == nil {
+		w = 0
+	} else {
+		w = *ns.Weight
+	}
+	if ns.ChangeFromHighest == nil {
+		cfh = 0
+	} else {
+		cfh = *ns.ChangeFromHighest
+	}
 	return fmt.Sprintf("{weight: %d, OverTime: %v, ChangeFromHighest: %3.2f, WifeWeight: %v}",
-		*ns.Weight, ns.OverTime, *ns.ChangeFromHighest, ns.WifeWeight)
+		w, ns.OverTime, cfh, ns.WifeWeight)
 }
 
 type myStructOfPtr struct {
 	Name     *string
-	Age      *int
+	Age      int
 	Height   *float64
 	MyWeight nestedStruct
 	Stats    []string
 }
 
 func (m myStructOfPtr) String() string {
-	return fmt.Sprintf("{%s, %d, %f, %v}", *m.Name, *m.Age, *m.Height, m.MyWeight)
+	var n string
+	var h float64
+	var a int
+	if m.Name == nil {
+		n = "nil"
+	} else {
+		n = *m.Name
+	}
+	if m.Height == nil {
+		h = 0
+	} else {
+		h = *m.Height
+	}
+	return fmt.Sprintf("{%s, %d, %d, %f, %v}", n, m.Age, a, h, m.MyWeight)
 }
 
 func NewBool(b bool) *bool        { return &b }
@@ -379,3 +677,133 @@ func NewInt(n int) *int           { return &n }
 func NewInt64(n int64) *int64     { return &n }
 func NewString(s string) *string  { return &s }
 func NewFloat(f float64) *float64 { return &f }
+
+func mergeSimple(base, patch simple) (*simple, error) {
+	ret, err := merge(base, patch)
+	if err != nil {
+		return nil, err
+	}
+	retS := ret.(simple)
+	return &retS, nil
+}
+
+type simple struct {
+	I  int
+	S2 simple2
+}
+
+type simple2 struct {
+	I int
+}
+
+type testStruct struct {
+	I        int
+	I8       int8
+	I16      int16
+	I32      int32
+	I64      int64
+	F        float64
+	F32      float32
+	S        string
+	Ui       uint
+	Ui8      uint8
+	Ui16     uint32
+	Ui32     uint32
+	Ui64     uint64
+	Pi       *int
+	Pi8      *int8
+	Pi16     *int16
+	Pi32     *int32
+	Pi64     *int64
+	Pf       *float64
+	Pf32     *float32
+	Ps       *string
+	Pui      *uint
+	Pui8     *uint8
+	Pui16    *uint16
+	Pui32    *uint32
+	Pui64    *uint64
+	Sls      []string
+	Sli      []int
+	Slf      []float64
+	Msi      map[string]int
+	Mis      map[int]string
+	Mspi     map[string]*int
+	Mips     map[int]*string
+	Struct1  testStructEmbed
+	Struct1p *testStructEmbed
+}
+
+type testStructEmbed struct {
+	I        int
+	I8       int8
+	I16      int16
+	I32      int32
+	I64      int64
+	F        float64
+	F32      float32
+	S        string
+	Ui       uint
+	Ui8      uint8
+	Ui16     uint32
+	Ui32     uint32
+	Ui64     uint64
+	Pi       *int
+	Pi8      *int8
+	Pi16     *int16
+	Pi32     *int32
+	Pi64     *int64
+	Pf       *float64
+	Pf32     *float32
+	Ps       *string
+	Pui      *uint
+	Pui8     *uint8
+	Pui16    *uint16
+	Pui32    *uint32
+	Pui64    *uint64
+	Sls      []string
+	Sli      []int
+	Slf      []float64
+	Msi      map[string]int
+	Mis      map[int]string
+	Mspi     map[string]*int
+	Mips     map[int]*string
+	Struct2  testStructEmbed2
+	Struct2p *testStructEmbed2
+}
+
+type testStructEmbed2 struct {
+	I     int
+	I8    int8
+	I16   int16
+	I32   int32
+	I64   int64
+	F     float64
+	F32   float32
+	S     string
+	Ui    uint
+	Ui8   uint8
+	Ui16  uint32
+	Ui32  uint32
+	Ui64  uint64
+	Pi    *int
+	Pi8   *int8
+	Pi16  *int16
+	Pi32  *int32
+	Pi64  *int64
+	Pf    *float64
+	Pf32  *float32
+	Ps    *string
+	Pui   *uint
+	Pui8  *uint8
+	Pui16 *uint16
+	Pui32 *uint32
+	Pui64 *uint64
+	Sls   []string
+	Sli   []int
+	Slf   []float64
+	Msi   map[string]int
+	Mis   map[int]string
+	Mspi  map[string]*int
+	Mips  map[int]*string
+}
