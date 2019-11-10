@@ -522,9 +522,9 @@ func getPaths(m map[string]interface{}) [][]string {
 //}
 
 func getPathsRec(src interface{}, curPath []string) [][]string {
-	if reflect.ValueOf(src).Kind() == reflect.Map {
+	if srcMap, ok := src.(map[string]interface{}); ok {
 		paths := [][]string{}
-		for k, v := range src.(map[string]interface{}) {
+		for k, v := range srcMap {
 			paths = append(paths, getPathsRec(v, append(curPath, k))...)
 		}
 		return paths
