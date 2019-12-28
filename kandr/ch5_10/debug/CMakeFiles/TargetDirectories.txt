@@ -1,0 +1,3 @@
+/Users/chris/go/src/github.com/cpoile/practice/kandr/ch5_10/debug/CMakeFiles/rebuild_cache.dir
+/Users/chris/go/src/github.com/cpoile/practice/kandr/ch5_10/debug/CMakeFiles/edit_cache.dir
+/Users/chris/go/src/github.com/cpoile/practice/kandr/ch5_10/debug/CMakeFiles/ch5_10.dir
