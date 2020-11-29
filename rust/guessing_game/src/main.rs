@@ -8,7 +8,8 @@ fn main() {
     println!("Let's play a guessing game. \
     I've picked a number between 1 and 100, try to guess it.");
 
-    loop {
+    for x in 1..6 {
+        println!("This is try {}", x);
         let mut guess = String::new();
         io::stdin().read_line(&mut guess)
             .expect("Failed to read line");
@@ -19,11 +20,13 @@ fn main() {
         };
 
         match guess.cmp(&target) {
-            Ordering::Less => println!("Too low."),
+            Ordering::Less => println!("Too low!"),
             Ordering::Greater => println!("Too high."),
-            Ordering::Equal => break,
+            Ordering::Equal => {
+                println!("You're right!");
+                return;
+            },
         };
     }
-
-    println!("You're right!");
+    println!("Sorry, you failed. It was {}.", target)
 }
