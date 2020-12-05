@@ -1,22 +1,11 @@
-#include <stddef.h>
 #include "resistor_color.h"
 
-static int bands[NUM_BANDS];
-static bool bands_init = false;
-
-int color_code(int color)
-{
-    return color;
+int color_code(resistor_band_t band) {
+    return band;
 }
 
-int *colors()
-{
-    if (!bands_init) {
-        for (size_t i = 0; i < NUM_BANDS; i++) {
-            bands[i] = i;
-        }
-        bands_init = true;
-    }
+const resistor_band_t allColors[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-    return bands;
+const resistor_band_t* colors() {
+    return allColors;
 }

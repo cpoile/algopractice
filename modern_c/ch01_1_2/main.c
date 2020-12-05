@@ -3,9 +3,11 @@
 int main()
 {
     printf("Hello, World!\n");
-    unsigned char test;
-    test = 255;
+    int test;
+    test = 120;
     test = test +1;
+
+    test = -test;
 
     printf("test is %d\n", test);
 }

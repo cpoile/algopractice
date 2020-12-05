@@ -1,0 +1,3 @@
+/Users/chris/go/src/github.com/cpoile/practice/modern_c/ch01_1_2/CMakeFiles/rebuild_cache.dir
+/Users/chris/go/src/github.com/cpoile/practice/modern_c/ch01_1_2/CMakeFiles/edit_cache.dir
+/Users/chris/go/src/github.com/cpoile/practice/modern_c/ch01_1_2/CMakeFiles/ch01_1_2.dir

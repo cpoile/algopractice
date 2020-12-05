@@ -15,5 +15,3 @@ int is_armstrong_number(int candidate)
 
     return sum == candidate;
 }
-
-
