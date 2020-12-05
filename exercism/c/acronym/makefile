@@ -1,22 +1,22 @@
 ### If you wish to use extra libraries (math.h for instance),
 ### add their flags here (-lm in our case) in the "LIBS" variable.
 
-LIBS = -lm
+# LIBS = -lm
 
 CC = cl
 
 ###
-CFLAGS  = -std=c99
-CFLAGS += -g
+# CFLAGS  = -std=c99
+# CFLAGS += -g
 CFLAGS += -W4 -WX
 # CFLAGS += -Wextra
-CFLAGS += -pedantic
+# CFLAGS += -pedantic
 # CFLAGS += -Werror
 # CFLAGS += -Wmissing-declarations
 CFLAGS += -DUNITY_SUPPORT_64
 
 ASANFLAGS  = -fsanitize=address
-ASANFLAGS += -fno-common
+asanflags += -fno-common
 ASANFLAGS += -fno-omit-frame-pointer
 
 .PHONY: test
